@@ -1,0 +1,67 @@
+{
+  "name": "skyvix",
+  "version": "1.0.0",
+  "packageManager": "bun@1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Skyvix Monorepo",
+  "license": "MIT",
+  "author": "Devix Developer Team",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "commit": "git add . && cz",
+    "build:packages": "turbo run build --filter=\"./packages/*\"",
+    "docker:build": "docker-compose -f docker/docker-compose.yaml build",
+    "docker:up:dev": "docker-compose --env-file .env.development up skyvix_dev -d",
+    "docker:up": "docker-compose --env-file .env up skyvix -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yaml down",
+    "db:list": "docker ps"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/eslint-plugin-jsx-a11y": "^6.10.0",
+    "@types/node": "^20.8.0",
+    "eslint": "9.24.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-promise": "^7.2.1",
+    "turbo": "^1.10.16",
+    "typescript": "^5.2.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.01%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      ">0.01%",
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "trustedDependencies": [
+    "@nestjs/core",
+    "@tailwindcss/oxide",
+    "unrs-resolver"
+  ],
+  "dependencies": {
+    "@nestjs/swagger": "^11.2.0"
+  }
+}

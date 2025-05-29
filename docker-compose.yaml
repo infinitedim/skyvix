@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  skyvix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT=${PORT}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        - DATABASE_URL=${DATABASE_URL}
+        - DB_PORT=${DB_PORT}
+        - DB_USERNAME=${DB_USERNAME}
+        - DB_NAME=${DB_NAME}
+        - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+        - JWT_REFRESH_IN=${JWT_REFRESH_IN}
+        - XENDIT_PUBLIC_KEY=${XENDIT_PUBLIC_KEY}
+        - FRONTEND_URL=${FRONTEND_URL}
+    image: skyvix_by_devixid
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: skyvix
+      
+  skyvix_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT=${PORT}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        - DATABASE_URL=${DATABASE_URL}
+        - DB_PORT=${DB_PORT}
+        - DB_USERNAME=${DB_USERNAME}
+        - DB_NAME=${DB_NAME}
+        - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+        - JWT_REFRESH_IN=${JWT_REFRESH_IN}
+        - XENDIT_PUBLIC_KEY=${XENDIT_PUBLIC_KEY}
+        - FRONTEND_URL=${FRONTEND_URL}
+    image: skyvix_dev_by_devixid
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: skyvix_admin_dev
+      POSTGRES_AUTH_METHOD: trust

@@ -1,0 +1,22 @@
+{
+  "name": "@skyvix/shared",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --config .prettierrc.json --write \"**/*.{js,jsx,ts,tsx,md,mdx}\"",
+    "commit": "git add . && cz",
+    "type-check": "tsc --project tsconfig.json --pretty --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0",
+    "eslint": "^9.24.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-promise": "^7.2.1"
+  }
+}

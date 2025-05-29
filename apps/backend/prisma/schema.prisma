@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  firstName    String?
+  lastName     String?
+  isActive     Boolean  @default(true)
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  orders   Order[]
+  payments Payment[]
+
+  @@map("users")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  userId      String
+  amount      Decimal     @db.Decimal(10, 2)
+  currency    String      @default("IDR")
+  status      OrderStatus @default(PENDING)
+  description String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("orders")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  userId          String
+  xenditPaymentId String?       @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("IDR")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String?
+  xenditResponse  Json?
+  failureReason   String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}

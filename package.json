@@ -21,11 +21,15 @@
     "clean": "turbo run clean",
     "commit": "git add . && cz",
     "build:packages": "turbo run build --filter=\"./packages/*\"",
+    "db:list": "docker ps",
     "docker:build": "docker-compose -f docker/docker-compose.yaml build",
     "docker:up:dev": "docker-compose --env-file .env.development up skyvix_dev -d",
     "docker:up": "docker-compose --env-file .env up skyvix -d",
     "docker:down": "docker-compose -f docker/docker-compose.yaml down",
-    "db:list": "docker ps"
+    "docker:redis": "docker run --name skyvix-redis -p 6379:6379 -d redis:7-alpine",
+    "docker:redis:stop": "docker stop skyvix-redis && docker rm skyvix-redis",
+    "docker:up:full": "docker-compose up -d",
+    "docker:logs:redis": "docker logs skyvix-redis -f"
   },
   "devDependencies": {
     "@types/bun": "latest",

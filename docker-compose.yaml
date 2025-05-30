@@ -1,5 +1,14 @@
 version: "3.8"
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: skyvix-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
   skyvix:
     build:
       context: .
@@ -23,6 +32,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: skyvix
+    depends_on: 
+      - redis
       
   skyvix_dev:
     build:
@@ -47,4 +58,5 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: skyvix_admin_dev
-      POSTGRES_AUTH_METHOD: trust
+    depends_on:
+      - redis

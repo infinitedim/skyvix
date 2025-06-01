@@ -1,14 +1,14 @@
 import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import { CreateUserDto } from "@skyvix/shared";
+import { UserRepository } from "./user.repository";
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userRepository: UserRepository,
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -21,7 +21,7 @@ export class UsersService {
     }
 
     const user = this.userRepository.create(createUserDto);
-    return this.userRepository.save(user);
+    return this.userRepository.save(await user);
   }
 
   async findAll(): Promise<User[]> {

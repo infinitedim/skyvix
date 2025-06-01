@@ -2,14 +2,13 @@ import { Injectable, CanActivate, ExecutionContext, HttpException, HttpStatus } 
 import { Reflector } from "@nestjs/core";
 import { Request } from "express";
 import { RedisService } from "../redis.service";
+import { RATE_LIMIT_KEY } from "../constant/constant";
 
 interface RateLimitOptions {
   limit: number;
   windowSec: number;
   keyGenerator?: (req: Request) => string;
 }
-
-export const RATE_LIMIT_KEY = "rate_limit";
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {

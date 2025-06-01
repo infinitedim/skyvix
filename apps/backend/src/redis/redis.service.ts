@@ -37,7 +37,6 @@ export class RedisService {
     return this.redis.exists(key);
   }
 
-  // Method untuk rate limiting
   async checkRateLimit(identifier: string, limit: number, windowSec: number): Promise<{
     allowed: boolean;
     remaining: number;
@@ -47,19 +46,13 @@ export class RedisService {
     const now = Math.floor(Date.now() / 1000);
     const windowStart = now - windowSec;
 
-    // Menggunakan pipeline untuk atomic operations
     const pipeline = this.redis.pipeline();
 
-    // Remove expired entries
     pipeline.zremrangebyscore(key, "-inf", windowStart);
 
-    // Count current requests in window
     pipeline.zcard(key);
-
-    // Add current request
     pipeline.zadd(key, now, `${now}-${Math.random()}`);
 
-    // Set expiration
     pipeline.expire(key, windowSec);
 
     const results = await pipeline.exec();

@@ -48,7 +48,6 @@ export class PrismaService extends PrismaClient<
     this.logger.log("Prisma Service initialized");
   }
 
-  // Helper method for handling Prisma errors
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handlePrismaError(error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

@@ -14,8 +14,8 @@ import {
 } from "@nestjs/common";
 import { PaymentService } from "./payment.service";
 import { CreatePaymentDto, UpdatePaymentDto, XenditWebhookDto } from "@skyvix/shared";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { GetUser } from "../auth/decorators/get-user.decorator";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 
 @Controller("payments")

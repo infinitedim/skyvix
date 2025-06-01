@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException, ConflictException } from "@nestjs/co
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { UsersService } from "../users/users.service";
-import { LoginDto, CreateUserDto, AuthResponse } from "@skyvix/shared";
 import { User } from "../users/entities/user.entity";
+import { LoginDto, CreateUserDto, AuthResponse } from "@skyvix/shared";
 import * as bcrypt from "bcryptjs";
 
 @Injectable()

@@ -13,8 +13,8 @@
     "type-check": "tsc --project tsconfig.json --pretty --noEmit"
   },
   "devDependencies": {
-    "typescript": "^5.2.0",
-    "eslint": "^9.24.0",
+    "typescript": "^5.8.3",
+    "eslint": "^9.28.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-promise": "^7.2.1"

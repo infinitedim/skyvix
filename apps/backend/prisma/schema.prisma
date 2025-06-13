@@ -7,71 +7,353 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User Management
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String         @id @default(cuid())
+  email        String         @unique
   password     String
-  firstName    String?
-  lastName     String?
-  isActive     Boolean   @default(true)
+  profile      UserProfile?
+  isActive     Boolean        @default(true)
   refreshToken String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   orders       Order[]
   payments     Payment[]
+  bookings     TrainBooking[]
 
   @@map("users")
 }
 
-model Order {
-  id          String      @id @default(cuid())
-  userId      String
-  amount      Decimal     @db.Decimal(10, 2)
-  currency    String      @default("IDR")
-  status      OrderStatus @default(PENDING)
-  description String?
-  metadata    Json?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments    Payment[]
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  address   String?
+  city      String?
+  country   String?  @default("ID")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@map("user_profiles")
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.VarChar(10)
+  name      String
+  city      String
+  province  String
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departureRoutes TrainRoute[] @relation("DepartureStation")
+  arrivalRoutes   TrainRoute[] @relation("ArrivalStation")
+
+  @@index([city])
+  @@index([province])
+  @@map("stations")
+}
+
+model Train {
+  id         String          @id @default(cuid())
+  code       String          @unique @db.VarChar(10)
+  name       String
+  type       TrainType       @default(EKONOMI)
+  facilities Json?
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  routes     TrainRoute[]
+  schedules  TrainSchedule[]
+  TrainSeat  TrainSeat[]
+
+  @@map("trains")
+}
+
+model TrainRoute {
+  id                 String   @id @default(cuid())
+  trainId            String
+  departureStationId String
+  arrivalStationId   String
+  distance           Float?
+  estimatedDuration  Int
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  train            Train           @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  departureStation Station         @relation("DepartureStation", fields: [departureStationId], references: [id])
+  arrivalStation   Station         @relation("ArrivalStation", fields: [arrivalStationId], references: [id])
+  schedules        TrainSchedule[]
+
+  @@unique([trainId, departureStationId, arrivalStationId])
+  @@index([departureStationId])
+  @@index([arrivalStationId])
+  @@map("train_routes")
+}
+
+model TrainSchedule {
+  id            String   @id @default(cuid())
+  routeId       String
+  departureTime String
+  arrivalTime   String
+  validFrom     DateTime
+  validUntil    DateTime
+  operatingDays String[]
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  route    TrainRoute     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  seats    TrainSeat[]
+  bookings TrainBooking[]
+  Train    Train?         @relation(fields: [trainId], references: [id])
+  trainId  String?
+
+  @@index([routeId])
+  @@index([validFrom, validUntil])
+  @@map("train_schedules")
+}
+
+model TrainSeat {
+  id          String    @id @default(cuid())
+  scheduleId  String
+  trainId     String
+  carNumber   String
+  seatNumber  String
+  seatClass   SeatClass @default(EKONOMI)
+  price       Decimal   @db.Decimal(15, 2)
+  isAvailable Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  schedule TrainSchedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  train    Train          @relation(fields: [trainId], references: [id])
+  bookings TrainBooking[]
+
+  @@unique([scheduleId, trainId, carNumber, seatNumber])
+  @@index([scheduleId])
+  @@index([seatClass])
+  @@map("train_seats")
+}
+
+model TrainBooking {
+  id              String        @id @default(cuid())
+  userId          String
+  scheduleId      String
+  seatId          String?
+  bookingCode     String        @unique
+  passengerName   String
+  passengerIdCard String
+  passengerPhone  String
+  passengerEmail  String
+  departureDate   DateTime
+  totalPrice      Decimal       @db.Decimal(15, 2)
+  status          BookingStatus @default(PENDING)
+  bookedAt        DateTime      @default(now())
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  schedule TrainSchedule @relation(fields: [scheduleId], references: [id])
+  seat     TrainSeat?    @relation(fields: [seatId], references: [id])
+
+  @@index([userId])
+  @@index([scheduleId])
+  @@index([departureDate])
+  @@index([status])
+  @@map("train_bookings")
+}
+
+model Currency {
+  code      String    @id @db.VarChar(3)
+  name      String
+  symbol    String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  orders    Order[]
+  payments  Payment[]
+
+  @@map("currencies")
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  userId       String
+  amount       Decimal     @db.Decimal(15, 2)
+  currencyCode String      @default("IDR") @db.VarChar(3)
+  status       OrderStatus @default(PENDING)
+  description  String?
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency   Currency    @relation(fields: [currencyCode], references: [code])
+  payments   Payment[]
+  orderItems OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
   @@map("orders")
 }
 
-model Payment {
-  id              String        @id @default(cuid())
-  orderId         String
-  userId          String
-  xenditPaymentId String?       @unique
-  amount          Decimal       @db.Decimal(10, 2)
-  currency        String        @default("IDR")
-  status          PaymentStatus @default(PENDING)
-  paymentMethod   String?
-  xenditResponse  Json?
-  failureReason   String?
-  paidAt          DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String?
+  name        String
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  totalPrice  Decimal  @db.Decimal(15, 2)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  userId            String
+  amount            Decimal       @db.Decimal(15, 2)
+  currencyCode      String        @default("IDR") @db.VarChar(3)
+  status            PaymentStatus @default(PENDING)
+  paymentMethodId   String?
+  externalPaymentId String?       @unique
+  externalResponse  Json?
+  failureReason     String?
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency      Currency       @relation(fields: [currencyCode], references: [code])
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
   @@map("payments")
+}
+
+model PaymentMethod {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  provider  String?
+  isActive  Boolean   @default(true)
+  config    Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  payments  Payment[]
+
+  @@map("payment_methods")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  userId     String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  category  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("system_configs")
+}
+
+enum TrainType {
+  EKSEKUTIF
+  BISNIS
+  EKONOMI
+  LUXURY
+  SLEEPER
+
+  @@map("train_type")
+}
+
+enum SeatClass {
+  EKSEKUTIF
+  BISNIS
+  EKONOMI
+  PREMIUM_EKONOMI
+
+  @@map("seat_class")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  CANCELLED
+  REFUNDED
+  USED
+  EXPIRED
+
+  @@map("booking_status")
 }
 
 enum OrderStatus {
   PENDING
   PROCESSING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
   COMPLETED
   CANCELLED
   FAILED
+  REFUNDED
+
+  @@map("order_status")
 }
 
 enum PaymentStatus {
   PENDING
   PROCESSING
+  AUTHORIZED
+  CAPTURED
   PAID
   FAILED
   CANCELLED
   REFUNDED
+  PARTIALLY_REFUNDED
+  EXPIRED
+
+  @@map("payment_status")
 }

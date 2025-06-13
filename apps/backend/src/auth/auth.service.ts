@@ -1,112 +1,260 @@
-import { Injectable, UnauthorizedException, ConflictException } from "@nestjs/common";
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+  BadRequestException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { UsersService } from "../users/users.service";
-import { User } from "../users/entities/user.entity";
-import { LoginDto, CreateUserDto, AuthResponse } from "@skyvix/shared";
 import * as bcrypt from "bcryptjs";
+import { PrismaService } from "@/prisma";
+import { RegisterDto, LoginDto, RefreshTokenDto } from "@/auth/dto";
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
+    private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) { }
 
-  async register(createUserDto: CreateUserDto): Promise<AuthResponse> {
-    try {
-      const user = await this.usersService.create(createUserDto);
-      const tokens = await this.generateTokens(user);
+  async register(registerDto: RegisterDto) {
+    const { email, password, ...profileData } = registerDto;
 
-      await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
 
-      return {
-        user: this.sanitizeUser(user),
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      };
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new Error("Registration failed");
+    if (existingUser) {
+      throw new ConflictException("User with this email already exists");
     }
-  }
 
-  async login(loginDto: LoginDto): Promise<AuthResponse> {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    const tokens = await this.generateTokens(user);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+        },
+      });
+
+      if (Object.keys(profileData).length > 0) {
+        await tx.userProfile.create({
+          data: {
+            userId: newUser.id,
+            ...profileData,
+          },
+        });
+      }
+
+      return tx.user.findUnique({
+        where: { id: newUser.id },
+        select: {
+          id: true,
+          email: true,
+          isActive: true,
+          createdAt: true,
+          profile: true,
+        },
+      });
+    });
+
+    if (!user) {
+      throw new BadRequestException("Failed to create user");
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return {
-      user: this.sanitizeUser(user),
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
+      user,
+      ...tokens,
+      message: "User registered successfully",
     };
   }
 
-  async logout(userId: string): Promise<void> {
-    await this.usersService.updateRefreshToken(userId, undefined);
-  }
+  async login(loginDto: LoginDto) {
+    const { email, password } = loginDto;
 
-  async refreshTokens(userId: string, refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.usersService.findOne(userId);
-
-    if (!user.refreshToken || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
-      throw new UnauthorizedException("Invalid refresh token");
-    }
-
-    const tokens = await this.generateTokens(user);
-    await this.usersService.updateRefreshToken(user.id, tokens.refreshToken);
-
-    return tokens;
-  }
-
-  async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { profile: true },
+    });
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const isPasswordValid = await user.validatePassword(password);
+    if (!user.isActive) {
+      throw new UnauthorizedException("Account is deactivated");
+    }
 
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException("Account is disabled");
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      user: userWithoutPassword,
+      ...tokens,
+      message: "Login successful",
+    };
+  }
+
+  async refreshTokens(refreshTokenDto: RefreshTokenDto) {
+    const { refreshToken } = refreshTokenDto;
+
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        include: { profile: true },
+      });
+
+      if (!user || !user.isActive || user.refreshToken !== refreshToken) {
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+
+      // Generate new tokens
+      const tokens = await this.generateTokens(user.id, user.email);
+
+      // Update refresh token
+      await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+      return {
+        ...tokens,
+        message: "Tokens refreshed successfully",
+      };
+    } catch {
+      throw new UnauthorizedException("Invalid or expired refresh token");
+    }
+  }
+
+  async logout(userId: string) {
+    // Remove refresh token
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+
+    return { message: "Logout successful" };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        profile: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException("User not found");
     }
 
     return user;
   }
 
-  private async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = { sub: user.id, email: user.email };
+  async updateProfile(userId: string, profileData: Partial<RegisterDto>) {
+    const { email, password, ...updateData } = profileData;
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Update user email if provided
+      if (email) {
+        const existingUser = await tx.user.findFirst({
+          where: {
+            email,
+            NOT: { id: userId },
+          },
+        });
+
+        if (existingUser) {
+          throw new ConflictException("Email already exists");
+        }
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { email },
+        });
+      }
+
+      // Update password if provided
+      if (password) {
+        const hashedPassword = await bcrypt.hash(password, 12);
+        await tx.user.update({
+          where: { id: userId },
+          data: { password: hashedPassword },
+        });
+      }
+
+      // Update or create profile
+      if (Object.keys(updateData).length > 0) {
+        await tx.userProfile.upsert({
+          where: { userId },
+          update: updateData,
+          create: {
+            userId,
+            ...updateData,
+          },
+        });
+      }
+
+      return tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          profile: true,
+        },
+      });
+    });
+  }
+
+  private async generateTokens(userId: string, email: string) {
+    const payload = { sub: userId, email };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>("JWT_SECRET"),
-        expiresIn: this.configService.get<string>("JWT_EXPIRES_IN", "15m"),
+        expiresIn: this.configService.get<string>("JWT_EXPIRES_IN") || "15m",
       }),
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN", "7d"),
+        expiresIn: this.configService.get<string>("JWT_REFRESH_EXPIRES_IN") || "7d",
       }),
     ]);
 
     return {
       accessToken,
-      refreshToken: await bcrypt.hash(refreshToken, 12),
+      refreshToken,
     };
   }
 
-  private sanitizeUser(user: User): Omit<User, "password" | "refreshToken"> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, refreshToken, ...sanitizedUser } = user;
-    return sanitizedUser as Omit<User, "password" | "refreshToken">;
+  private async updateRefreshToken(userId: string, refreshToken: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken },
+    });
   }
 }

@@ -5,7 +5,6 @@
   "private": true,
   "type": "module",
   "description": "Skyvix Monorepo",
-  "license": "MIT",
   "author": "Devix Developer Team",
   "workspaces": [
     "apps/*",
@@ -31,11 +30,14 @@
     "docker:up:full": "docker-compose up -d",
     "docker:logs:redis": "docker logs skyvix-redis -f"
   },
+  "dependencies": {
+    "@nestjs/swagger": "^11.2.0"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/eslint-plugin-jsx-a11y": "^6.10.0",
     "@types/node": "^20.17.57",
-    "eslint": "^8.57.1",
+    "eslint": "^9.28.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-promise": "^7.2.1",
@@ -62,10 +64,6 @@
   },
   "trustedDependencies": [
     "@nestjs/core",
-    "@tailwindcss/oxide",
-    "unrs-resolver"
-  ],
-  "dependencies": {
-    "@nestjs/swagger": "^11.2.0"
-  }
+    "@tailwindcss/oxide"
+  ]
 }

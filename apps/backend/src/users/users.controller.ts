@@ -1,43 +1,96 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from "@nestjs/common";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from "@nestjs/common";
 import { UsersService } from "./users.service";
-import { CreateUserDto } from "@skyvix/shared";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { GetUser } from "../auth/decorators/get-user.decorator";
-import { User } from "./entities/user.entity";
-import { RateLimitPerIpAndEndpoint } from "../redis/decorators/ratelimit.decorator";
+import { ChangePasswordDto, CreateUserDto, UpdateUserDto, UserQueryDto } from "@/users/dto";
+import { AuthGuard } from "@/auth/guard/auth.guard";
+import { UsersGuard } from "@/users";
 
 @Controller("users")
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @RateLimitPerIpAndEndpoint(5, 60)
-  create(@Body() createUserDto: CreateUserDto) {
+  @UseGuards(UsersGuard)
+  async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
-  @RateLimitPerIpAndEndpoint(50, 60) // 50 requests per minute
-  findAll() {
-    return this.usersService.findAll();
+  @UseGuards(UsersGuard)
+  async findAll(@Query() query: UserQueryDto) {
+    return this.usersService.findAll(query);
   }
 
-  @Get("profile")
-  @RateLimitPerIpAndEndpoint(100, 60) // 100 profile requests per minute per user
-  getProfile(@GetUser() user: User) {
-    return this.usersService.findOne(user.id);
+  @Get("me")
+  async getCurrentUser(@Request() req: any) {
+    return this.usersService.findOne(req.user.id);
   }
 
   @Get(":id")
-  @RateLimitPerIpAndEndpoint(30, 60) // 30 requests per minute
-  findOne(@Param("id") id: string) {
+  @UseGuards(UsersGuard)
+  async findOne(@Param("id") id: string) {
     return this.usersService.findOne(id);
   }
 
+  @Get(":id/stats")
+  @UseGuards(UsersGuard)
+  async getUserStats(@Param("id") id: string) {
+    return this.usersService.getUserStats(id);
+  }
+
+  @Patch("me")
+  async updateCurrentUser(@Request() req: any, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(req.user.id, updateUserDto);
+  }
+
+  @Patch(":id")
+  @UseGuards(UsersGuard)
+  async update(@Param("id") id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(id, updateUserDto);
+  }
+
+  @Patch(":id/toggle-status")
+  @UseGuards(UsersGuard)
+  async toggleStatus(@Param("id") id: string) {
+    return this.usersService.toggleStatus(id);
+  }
+
+  @Post("change-password")
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Request() req: any, @Body() changePasswordDto: ChangePasswordDto) {
+    return this.usersService.changePassword(req.user.id, changePasswordDto);
+  }
+
+  @Post(":id/change-password")
+  @UseGuards(UsersGuard) 
+  @HttpCode(HttpStatus.OK)
+  async changeUserPassword(@Param("id") id: string, @Body() changePasswordDto: ChangePasswordDto) {
+    return this.usersService.changePassword(id, changePasswordDto);
+  }
+
   @Delete(":id")
-  @RateLimitPerIpAndEndpoint(5, 60) // 5 deletions per minute
-  remove(@Param("id") id: string) {
+  @UseGuards(UsersGuard)
+  async remove(@Param("id") id: string) {
     return this.usersService.remove(id);
+  }
+
+  @Delete(":id/hard")
+  @UseGuards(UsersGuard)
+  async hardDelete(@Param("id") id: string) {
+    return this.usersService.hardDelete(id);
   }
 }

@@ -12,7 +12,7 @@ export class UserQueryDto {
 
   @IsOptional()
   @IsString()
-  province?: string;
+  address?: string;
 
   @IsOptional()
   @Transform(({ value }) => value === "true")

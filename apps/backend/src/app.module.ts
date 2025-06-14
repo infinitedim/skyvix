@@ -7,6 +7,10 @@ import { RedisModule } from "@/redis";
 import { AuthModule, AuthService } from "@/auth";
 import { UsersModule } from "@/users";
 import { RateLimitInterceptor } from "./common";
+import { TrainModule } from './train/train.module';
+import { PaymentService } from './payment/payment.service';
+import { PaymentController } from './payment/payment.controller';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -18,8 +22,10 @@ import { RateLimitInterceptor } from "./common";
     RedisModule,
     UsersModule,
     AuthModule,
+    TrainModule,
+    PaymentModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, AuthService, RateLimitInterceptor],
+  controllers: [AppController, PaymentController],
+  providers: [AppService, AuthService, RateLimitInterceptor, PaymentService],
 })
 export class AppModule { }

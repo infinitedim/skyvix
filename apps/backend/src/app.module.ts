@@ -6,6 +6,7 @@ import { PrismaModule } from "@/prisma";
 import { RedisModule } from "@/redis";
 import { AuthModule, AuthService } from "@/auth";
 import { UsersModule } from "@/users";
+import { RateLimitInterceptor } from "./common";
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { UsersModule } from "@/users";
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AuthService],
+  providers: [AppService, AuthService, RateLimitInterceptor],
 })
 export class AppModule { }

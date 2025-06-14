@@ -9,11 +9,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
 } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { AuthGuard } from "./guard/auth.guard";
 import { RegisterDto, LoginDto, RefreshTokenDto } from "@/auth/dto";
+import { RateLimitInterceptor } from "@/common";
 
+@UseInterceptors(RateLimitInterceptor)
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) { }

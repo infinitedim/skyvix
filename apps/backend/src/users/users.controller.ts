@@ -12,12 +12,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
 } from "@nestjs/common";
-import { UsersService } from "./users.service";
 import { ChangePasswordDto, CreateUserDto, UpdateUserDto, UserQueryDto } from "@/users/dto";
 import { AuthGuard } from "@/auth/guard/auth.guard";
-import { UsersGuard } from "@/users";
+import { UsersService, UsersGuard } from "@/users";
+import { RateLimitInterceptor } from "@/common";
 
+@UseInterceptors(RateLimitInterceptor)
 @Controller("users")
 @UseGuards(AuthGuard)
 export class UsersController {

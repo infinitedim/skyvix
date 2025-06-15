@@ -2,9 +2,10 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { AuthModule, AuthService } from "@/auth";
+import { AuthModule } from "@/auth";
+import { GuardsModule } from "@/common/guard/guard.module";
 import { RateLimitInterceptor } from "@/common";
-import { PaymentController, PaymentModule,  PaymentService } from "@/payment";
+import { PaymentController, PaymentModule, PaymentService } from "@/payment";
 import { PrismaModule } from "@/prisma";
 import { RedisModule } from "@/redis";
 import { TrainModule } from "@/train";
@@ -18,12 +19,13 @@ import { UsersModule } from "@/users";
     }),
     PrismaModule,
     RedisModule,
-    UsersModule,
+    GuardsModule, // Add GuardsModule first
     AuthModule,
+    UsersModule,
     TrainModule,
     PaymentModule,
   ],
   controllers: [AppController, PaymentController],
-  providers: [AppService, AuthService, RateLimitInterceptor, PaymentService],
+  providers: [AppService, RateLimitInterceptor, PaymentService],
 })
-export class AppModule { }
+export class AppModule {}

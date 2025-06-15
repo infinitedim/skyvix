@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "@/prisma";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
@@ -20,7 +20,6 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     const { email, password, ...profileData } = createUserDto;
 
-    // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -29,20 +28,16 @@ export class UsersService {
       throw new ConflictException("User with this email already exists");
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user with profile in a transaction
     const user = await this.prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
           email,
           password: hashedPassword,
-          isActive: createUserDto.isActive ?? true,
         },
       });
 
-      // Create profile if profile data is provided
       if (Object.keys(profileData).length > 0) {
         await tx.userProfile.create({
           data: {
@@ -65,7 +60,7 @@ export class UsersService {
     const {
       search,
       city,
-      province,
+      address,
       isActive,
       page = 1,
       limit = 10,
@@ -75,7 +70,6 @@ export class UsersService {
 
     const skip = (page - 1) * limit;
 
-    // Build where clause
     const where: any = {};
     
     if (search) {
@@ -91,13 +85,12 @@ export class UsersService {
       where.isActive = isActive;
     }
 
-    if (city || province) {
+    if (city || address) {
       where.profile = {};
       if (city) where.profile.city = { contains: city, mode: "insensitive" };
-      if (province) where.profile.address = { contains: province, mode: "insensitive" };
+      if (address) where.profile.address = { contains: address, mode: "insensitive" };
     }
 
-    // Get users with pagination
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
@@ -180,7 +173,6 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto) {
     const { email, password, ...profileData } = updateUserDto;
 
-    // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -192,7 +184,6 @@ export class UsersService {
     return await this.prisma.$transaction(async (tx) => {
       const updateData: any = {};
 
-      // Update email if provided and different
       if (email && email !== existingUser.email) {
         const emailExists = await tx.user.findFirst({
           where: {
@@ -208,17 +199,10 @@ export class UsersService {
         updateData.email = email;
       }
 
-      // Update password if provided
       if (password) {
         updateData.password = await bcrypt.hash(password, 12);
       }
 
-      // Update isActive if provided
-      if (updateUserDto.isActive !== undefined) {
-        updateData.isActive = updateUserDto.isActive;
-      }
-
-      // Update user
       if (Object.keys(updateData).length > 0) {
         await tx.user.update({
           where: { id },
@@ -226,7 +210,6 @@ export class UsersService {
         });
       }
 
-      // Update or create profile
       if (Object.keys(profileData).length > 0) {
         await tx.userProfile.upsert({
           where: { userId: id },

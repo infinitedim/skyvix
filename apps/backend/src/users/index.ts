@@ -12,3 +12,4 @@ export * from "./users.service";
 
 // Export Controller last (bergantung pada service dan guard)
 export * from "./users.controller";
+export * from "./users.module";
